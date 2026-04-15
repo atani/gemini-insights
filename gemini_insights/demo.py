@@ -10,6 +10,40 @@ All project names, session IDs, and narrative text below are invented.
 
 from __future__ import annotations
 
+# Single source of truth for the demo PII guard. Both the unit test and the
+# CI workflow check that the rendered demo HTML contains none of these
+# tokens — real project / service / customer / user names that must never
+# leak via the shipped demo or screenshot.
+#
+# Keep the list in lowercase; both consumers match case-insensitively.
+FORBIDDEN_DEMO_TOKENS: tuple[str, ...] = (
+    # personal / host identifiers that have leaked before
+    "lolipop",
+    "heteml",
+    "hetemail",
+    "pepabo",
+    "taniwaki",
+    "atanit",
+    "tech.pepabo.com",
+    "git.pepabo.com",
+    # past project/service codenames from the author's real ~/.gemini/
+    "tsudanuma",
+    "archives-server",
+    "qrunner",
+    "puppetserver",
+    "customer-reliability",
+    # Pepabo brand names — defence-in-depth against future leaks
+    "muumuu",
+    "minne",
+    "suzuri",
+    "colorme",
+    "color-me",
+    "goope",
+    "booth",
+    "kouin",
+    "stores.jp",
+)
+
 DEMO_STATS: dict = {
     "totals": {
         "sessions": 72,
@@ -110,6 +144,18 @@ DEMO_STATS: dict = {
             "errors": 2,
             "last_activity": "2026-03-05T13:25:00+00:00",
         },
+        # Catch-all "misc" row so per-project totals reconcile with the
+        # top-level `totals` block. `aggregate_to_jsonable` emits every
+        # project it saw, so the two always sum exactly in real output.
+        {
+            "name": "misc-sandboxes",
+            "sessions": 11,
+            "user_messages": 34,
+            "gemini_messages": 116,
+            "tool_calls": 116,
+            "errors": 1,
+            "last_activity": "2026-02-28T10:15:00+00:00",
+        },
     ],
     "long_sessions": [],
     "response_time_buckets": {
@@ -122,6 +168,9 @@ DEMO_STATS: dict = {
         ">15m": 3,
     },
     "overlap": {"overlap_events": 34, "sessions_involved": 28, "pct_messages": 41},
+    # Hand-tuned so the 24 per-hour values sum to totals.user_messages (318).
+    # `compute_hour_histogram` in collect.py counts exactly one entry per user
+    # message, so sums must match in real data.
     "hour_histogram": {
         "0": 1,
         "1": 0,
@@ -129,23 +178,23 @@ DEMO_STATS: dict = {
         "3": 0,
         "4": 0,
         "5": 0,
-        "6": 4,
-        "7": 12,
-        "8": 21,
-        "9": 38,
-        "10": 52,
-        "11": 46,
-        "12": 18,
-        "13": 41,
-        "14": 48,
-        "15": 44,
-        "16": 39,
-        "17": 28,
-        "18": 14,
-        "19": 8,
-        "20": 5,
-        "21": 3,
-        "22": 2,
+        "6": 3,
+        "7": 9,
+        "8": 16,
+        "9": 28,
+        "10": 39,
+        "11": 34,
+        "12": 14,
+        "13": 30,
+        "14": 36,
+        "15": 33,
+        "16": 29,
+        "17": 21,
+        "18": 11,
+        "19": 6,
+        "20": 4,
+        "21": 2,
+        "22": 1,
         "23": 1,
     },
 }
