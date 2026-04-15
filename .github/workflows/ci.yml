@@ -51,13 +51,23 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install -e .
-      - name: Render demo report and grep for forbidden tokens
+      - name: Render demo report and check for forbidden tokens
+        # Single source of truth: gemini_insights.demo.FORBIDDEN_DEMO_TOKENS.
+        # The same list is checked by tests/test_render.py so the two
+        # gates cannot drift apart.
         run: |
           gemini-insights demo --output /tmp/demo.html --no-open
-          if grep -iE 'lolipop|heteml|hetemail|pepabo|taniwaki|tsudanuma|archives-server|qrunner|puppetserver|customer-reliability' /tmp/demo.html; then
-            echo "::error::demo.html contains a forbidden token — regenerate from synthetic data only."
-            exit 1
-          fi
+          python - <<'PY'
+          import re, sys
+          from gemini_insights.demo import FORBIDDEN_DEMO_TOKENS
+          html = open('/tmp/demo.html', encoding='utf-8').read()
+          pattern = re.compile('(?:' + '|'.join(re.escape(t) for t in FORBIDDEN_DEMO_TOKENS) + ')', re.IGNORECASE)
+          m = pattern.search(html)
+          if m:
+              print(f'::error::demo.html contains a forbidden token: {m.group(0)!r}')
+              sys.exit(1)
+          print(f'OK — checked {len(FORBIDDEN_DEMO_TOKENS)} forbidden tokens.')
+          PY
 
   build:
     name: Build sdist + wheel

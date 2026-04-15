@@ -6,7 +6,7 @@ import json
 import re
 
 from gemini_insights.collect import aggregate, aggregate_to_jsonable, collect_sessions
-from gemini_insights.demo import DEMO_INSIGHTS, DEMO_STATS
+from gemini_insights.demo import DEMO_INSIGHTS, DEMO_STATS, FORBIDDEN_DEMO_TOKENS
 from gemini_insights.render import render
 
 
@@ -83,11 +83,28 @@ def test_render_tolerates_non_numeric_session_count(fake_gemini_dir):
 
 def test_demo_output_has_no_placeholder_pii_tokens():
     """The built-in demo data ships with the repo; ensure it doesn't contain
-    tokens we explicitly want to keep out of the published screenshot."""
+    tokens we explicitly want to keep out of the published screenshot.
+
+    Both this test and the CI `demo-pii-guard` job consume the same
+    `FORBIDDEN_DEMO_TOKENS` list from `gemini_insights.demo`, so they can't
+    drift apart.
+    """
     html = render(DEMO_STATS, DEMO_INSIGHTS)
-    forbidden = re.compile(
-        r"\b(lolipop|heteml|hetemail|pepabo|taniwaki|tsudanuma|archives-server|qrunner|puppetserver|customer-reliability)\b",
-        re.IGNORECASE,
-    )
+    # Build one alternation regex; tokens are lowercased so match is i-case.
+    pattern = r"(?:" + "|".join(re.escape(t) for t in FORBIDDEN_DEMO_TOKENS) + r")"
+    forbidden = re.compile(pattern, re.IGNORECASE)
     match = forbidden.search(html)
     assert match is None, f"demo HTML contains forbidden token: {match.group(0)}"
+
+
+def test_demo_data_totals_reconcile():
+    """Synthetic demo numbers should be internally consistent so the
+    README screenshot doesn't display a paradox."""
+    totals = DEMO_STATS["totals"]
+    per_project = DEMO_STATS["per_project"]
+    assert sum(p["sessions"] for p in per_project) == totals["sessions"]
+    assert sum(p["user_messages"] for p in per_project) == totals["user_messages"]
+    assert sum(p["gemini_messages"] for p in per_project) == totals["gemini_messages"]
+    assert sum(p["tool_calls"] for p in per_project) == totals["tool_calls"]
+    hist_sum = sum(int(v) for v in DEMO_STATS["hour_histogram"].values())
+    assert hist_sum == totals["user_messages"]
