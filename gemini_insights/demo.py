@@ -212,9 +212,9 @@ DEMO_INSIGHTS: dict = {
             "replace calls when the target file has drifted since the last read."
         ),
         "quick_wins": (
-            "Add a GEMINI.md note to shell out for paths under $HOME, and to always "
-            "re-read a file immediately before calling replace. Both patterns are one-line "
-            "fixes that would erase most of the current friction."
+            "Turn the two recurring friction patterns into named slash commands "
+            "(/read-home, /safe-replace) under ~/.gemini/commands/. That pulls the context "
+            "in only when you need it — and keeps GEMINI.md lean."
         ),
         "ambitious": (
             "Let Gemini self-review a week of transcripts each Monday and file a PR that "
@@ -319,46 +319,78 @@ DEMO_INSIGHTS: dict = {
             ),
         },
     ],
-    "gemini_md_additions": [
+    "command_suggestions": [
         {
-            "text": (
-                "## Out-of-workspace files\n"
-                "- When the user mentions a path under $HOME (or any absolute path outside the "
-                "workspace), read it via `run_shell_command cat <path>` instead of `read_file`."
-            ),
+            "name": "read-home",
+            "description": "Read a file under $HOME that lives outside the workspace.",
+            "prompt": "!{cat {{args}}}",
             "why": (
-                "read_file refuses paths outside the workspace; shell bypasses 1–2 rejected tool calls per session."
+                "11/24 tool errors were read_file refusing paths outside the workspace. "
+                "A named slash command makes the shell-cat fallback one keystroke away — "
+                "no GEMINI.md bloat that every session pays for."
             ),
         },
+        {
+            "name": "safe-replace",
+            "description": "Re-read the target file, then replace old_string with new_string.",
+            "prompt": (
+                "Re-read {{args.file}} with `read_file`, then call `replace` with "
+                "old_string={{args.old}} and new_string={{args.new}}. Abort and ask if "
+                "old_string no longer matches after the re-read."
+            ),
+            "why": (
+                "7 Edit Mismatch errors came from stale context. Encoding the re-read as a "
+                "command removes the class without adding rules to GEMINI.md."
+            ),
+        },
+        {
+            "name": "api-triage",
+            "description": "Triage a backend-api 5xx with a fixed run → read → replace playbook.",
+            "prompt": (
+                "Reproduce {{args}} against the dev server, collect the first failing "
+                "stack frame, read the handler + its immediate dependencies, then propose a "
+                "minimal patch. Stop before writing any change."
+            ),
+            "why": (
+                "backend-api's 18 sessions all follow the same rhythm — codifying it as a "
+                "slash command cuts the 20+ shell rounds exploration sessions need today."
+            ),
+        },
+    ],
+    "gemini_md_additions": [
         {
             "text": (
                 "## Replace discipline\n"
                 "- Before calling `replace`, always re-read the target file in the same turn "
                 "so `old_string` is up to date."
             ),
-            "why": "7/24 recent tool errors were replace mismatches from stale context.",
+            "why": (
+                "Kept as a global GEMINI.md rule only because it applies everywhere — most "
+                "other friction patterns are now covered by dedicated slash commands."
+            ),
         },
     ],
     "features": [
         {
-            "title": "Skills at ~/.gemini/skills",
-            "oneliner": "Package recurring investigation playbooks as reusable skills.",
+            "title": "Argument placeholders in slash commands",
+            "oneliner": "Use {{args}} / {{args.name}} to pass context into TOML prompts.",
             "why": (
-                "backend-api's 18 sessions all follow the same run→read→replace pattern. "
-                "A single skill would encode it."
+                "The suggested commands above all use {{args}} — worth knowing the full "
+                "substitution surface so you can template richer workflows."
             ),
-            "example_code": "mkdir -p ~/.gemini/skills/api-triage && $EDITOR ~/.gemini/skills/api-triage/SKILL.md",
+            "example_code": (
+                "# inside ~/.gemini/commands/review.toml\n"
+                'prompt = "Review the diff for {{args.pr}} focusing on {{args.focus}}."'
+            ),
         },
         {
-            "title": "Slash commands at ~/.gemini/commands",
-            "oneliner": "Bind one-liner workflows to /verbs.",
-            "why": ("You could encode the read-home rule as /read-home so it's one keystroke away."),
-            "example_code": (
-                "cat > ~/.gemini/commands/read-home.toml <<'EOF'\n"
-                'description = "cat a \\$HOME path outside the workspace"\n'
-                'prompt = "!{cat {{args}}}"\n'
-                "EOF"
+            "title": "Headless invocation with --prompt",
+            "oneliner": "Run Gemini CLI non-interactively from cron or CI.",
+            "why": (
+                "Once workflows are captured as slash commands, piping them through "
+                "`gemini --prompt '/api-triage ...'` unlocks scheduled runs."
             ),
+            "example_code": "gemini --prompt '/api-triage /users endpoint 500s on empty payload'",
         },
     ],
     "patterns": [
