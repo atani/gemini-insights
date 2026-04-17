@@ -15,6 +15,14 @@ A [Gemini CLI](https://github.com/google-gemini/gemini-cli) counterpart to Claud
 - **How You Use Gemini** narrative + key insight callout.
 - **Impressive Things You Did** / **Where Things Go Wrong** / **Features to Try** / **New Usage Patterns** / **On the Horizon** / **Fun ending**.
 
+## Recommendation philosophy
+
+Earlier `/insights`-style tools leaned on **GEMINI.md / CLAUDE.md patches** — permanent
+context every session paid for. This tool leans the other way: the primary
+recommendation is a set of **`~/.gemini/commands/*.toml` slash commands** so recurring
+workflows are pulled in on-demand. `gemini_md_additions` is still supported but reserved
+for genuinely global rules (e.g., "always re-read before replace").
+
 ## Install
 
 Requires Python 3.10+. No runtime dependencies.
@@ -52,7 +60,10 @@ prompt = """
 
 Sample 3-5 transcripts via `!{cat ~/.gemini/tmp/<hash>/chats/session-*.json}`, then write
 ~/.gemini/usage-data/insights.json with this schema:
-{at_a_glance, project_areas, narrative, wins, friction, gemini_md_additions, features, patterns, horizon, fun_ending}
+{at_a_glance, project_areas, narrative, wins, friction, command_suggestions, gemini_md_additions, features, patterns, horizon, fun_ending}
+
+Prefer `command_suggestions` (reusable ~/.gemini/commands/*.toml workflows) over
+`gemini_md_additions` — only use the latter for rules that apply to every single session.
 
 !{gemini-insights render --stats ~/.gemini/usage-data/stats.json --insights ~/.gemini/usage-data/insights.json --output ~/.gemini/usage-data/report.html --no-open}
 """
@@ -69,6 +80,7 @@ Then inside `gemini` just type `/insights`.
   "narrative": { "paragraphs": ["..."], "key_insight": "..." },
   "wins":     [{ "title": "...", "description": "..." }],
   "friction": [{ "title": "...", "description": "...", "examples": ["..."] }],
+  "command_suggestions": [{ "name": "verb", "description": "one-liner", "prompt": "TOML prompt body", "why": "..." }],
   "gemini_md_additions": [{ "text": "markdown to paste", "why": "..." }],
   "features": [{ "title": "...", "oneliner": "...", "why": "...", "example_code": "..." }],
   "patterns": [{ "title": "...", "summary": "...", "detail": "...", "prompt": "..." }],

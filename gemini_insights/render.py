@@ -58,6 +58,14 @@ h2 { font-size: 20px; font-weight: 600; color: #0f172a; margin-top: 48px; margin
 .gemini-md-item:last-child { border-bottom: none; }
 .cmd-code { background: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; color: #1e40af; border: 1px solid #bfdbfe; font-family: monospace; display: block; white-space: pre-wrap; word-break: break-word; }
 .cmd-why { font-size: 12px; color: #64748b; margin-top: 4px; }
+.commands-section { background: #fdf4ff; border: 1px solid #f5d0fe; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+.commands-section h3 { font-size: 14px; font-weight: 600; color: #86198f; margin: 0 0 6px 0; }
+.commands-intro { font-size: 12px; color: #a21caf; margin-bottom: 12px; line-height: 1.5; }
+.command-item { padding: 12px 0; border-bottom: 1px solid #f5d0fe; }
+.command-item:last-child { border-bottom: none; }
+.command-slash { font-family: monospace; font-size: 13px; font-weight: 600; color: #86198f; margin-bottom: 2px; }
+.command-desc { font-size: 12px; color: #64748b; margin-bottom: 8px; }
+.command-path { font-family: monospace; font-size: 11px; color: #a21caf; margin-bottom: 4px; }
 .features-section, .patterns-section { display: flex; flex-direction: column; gap: 12px; margin: 16px 0; }
 .feature-card { background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 16px; }
 .pattern-card { background: #f0f9ff; border: 1px solid #7dd3fc; border-radius: 8px; padding: 16px; }
@@ -271,6 +279,41 @@ def build_friction(insights: dict | None) -> str:
     return '<div class="friction-categories">' + "".join(cards) + "</div>"
 
 
+def build_command_suggestions(insights: dict | None) -> str:
+    items = (insights or {}).get("command_suggestions") or []
+    if not items:
+        return ""
+    cards = []
+    for it in items:
+        name = (it.get("name") or "").strip()
+        if not name:
+            continue
+        description = it.get("description", "")
+        prompt = it.get("prompt", "")
+        why = it.get("why", "")
+        toml_body = f'description = "{description}"\nprompt = """\n{prompt}\n"""'
+        cards.append(
+            '<div class="command-item">'
+            f'<div class="command-slash">/{_esc(name)}</div>'
+            f'<div class="command-desc">{_esc(description)}</div>'
+            f'<div class="command-path">~/.gemini/commands/{_esc(name)}.toml</div>'
+            f'<code class="cmd-code">{_esc(toml_body)}</code>'
+            f'<div class="cmd-why">{_esc(why)}</div>'
+            "</div>"
+        )
+    if not cards:
+        return ""
+    return (
+        '<div class="commands-section">'
+        "<h3>Suggested slash commands</h3>"
+        '<div class="commands-intro">'
+        "Package recurring workflows as reusable TOML commands under "
+        "<code>~/.gemini/commands/</code> — on-demand context beats permanent "
+        "GEMINI.md bloat."
+        "</div>" + "".join(cards) + "</div>"
+    )
+
+
 def build_gemini_md_section(insights: dict | None) -> str:
     items = (insights or {}).get("gemini_md_additions") or []
     if not items:
@@ -285,7 +328,7 @@ def build_gemini_md_section(insights: dict | None) -> str:
             f'<div class="cmd-why">{_esc(why)}</div>'
             "</div>"
         )
-    return '<div class="gemini-md-section"><h3>Suggested GEMINI.md additions</h3>' + "".join(cards) + "</div>"
+    return '<div class="gemini-md-section"><h3>Global GEMINI.md tweaks (use sparingly)</h3>' + "".join(cards) + "</div>"
 
 
 def build_features(insights: dict | None) -> str:
@@ -462,8 +505,9 @@ def render(stats: dict, insights: dict | None = None) -> str:
         '<h2 id="section-friction">Where Things Go Wrong</h2>',
         build_friction(insights),
         '<h2 id="section-features">Features to Try</h2>',
-        build_gemini_md_section(insights),
+        build_command_suggestions(insights),
         build_features(insights),
+        build_gemini_md_section(insights),
         '<h2 id="section-patterns">New Ways to Use Gemini CLI</h2>',
         build_patterns(insights),
         '<h2 id="section-horizon">On the Horizon</h2>',

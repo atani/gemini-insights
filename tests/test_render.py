@@ -61,11 +61,47 @@ def test_render_with_insights_populates_sections(fake_gemini_dir):
     html = render(_jsonable_stats(fake_gemini_dir), insights=DEMO_INSIGHTS)
     for marker in [
         "At a Glance",
-        "Suggested GEMINI.md additions",
+        "Suggested slash commands",
+        "/read-home",
+        "~/.gemini/commands/read-home.toml",
+        "Global GEMINI.md tweaks",
         "backend-api",
         "Weekly self-critique",
     ]:
         assert marker in html, f"missing {marker}"
+
+
+def test_render_command_suggestions_block_absent_when_empty(fake_gemini_dir):
+    html = render(_jsonable_stats(fake_gemini_dir), insights={"command_suggestions": []})
+    assert "Suggested slash commands" not in html
+
+
+def test_render_command_suggestions_escapes_user_controlled_fields(fake_gemini_dir):
+    insights = {
+        "command_suggestions": [
+            {
+                "name": "safe<xss>",
+                "description": "<script>alert(1)</script>",
+                "prompt": "</code><script>evil()</script>",
+                "why": "legit reason",
+            }
+        ]
+    }
+    html = render(_jsonable_stats(fake_gemini_dir), insights=insights)
+    assert "<script>alert(1)</script>" not in html
+    assert "&lt;script&gt;" in html
+
+
+def test_render_command_suggestion_without_name_is_skipped(fake_gemini_dir):
+    insights = {
+        "command_suggestions": [
+            {"name": "", "description": "no name", "prompt": "p", "why": "w"},
+            {"name": "ok", "description": "d", "prompt": "p", "why": "w"},
+        ]
+    }
+    html = render(_jsonable_stats(fake_gemini_dir), insights=insights)
+    assert "/ok" in html
+    assert "no name" not in html
 
 
 def test_render_tolerates_non_numeric_session_count(fake_gemini_dir):
